@@ -1,0 +1,66 @@
+    struct DomainDetails {
+        bytes name;
+        bytes12 topLevel;
+        address owner;
+        bytes15 ipfs;
+        uint expires;
+    }
+
+    struct SubDomainDetails {
+        bytes name;
+        bytes domain;
+        bytes12 topLevel;
+        address owner;
+        bytes ipfs;
+    }
+
+    struct Receipt {
+        uint amountPaidWei;
+        uint timestamp;
+        uint expires;
+    }
+
+
+    uint constant public DOMAIN_NAME_COST = 1 ether;
+    uint constant public DOMAIN_NAME_COST_SHORT_ADDITION = 1 ether;
+    uint constant public DOMAIN_EXPIRATION_DATE = 365 days;
+    uint8 constant public DOMAIN_NAME_MIN_LENGTH = 5;
+    uint8 constant public DOMAIN_NAME_EXPENSIVE_LENGTH = 8;
+
+    modifier collectDomainNamePayment(bytes memory domain) {
+        // @dev - get the price for the provided domain
+        uint domainPrice = getPrice(domain);
+        // @dev - require the payment sent to be enough for the current domain cost
+        require(msg.value >= domainPrice, "Insufficient amount.");
+        _;
+    }
+
+    modifier isDomainOwner(bytes memory domain, bytes12 topLevel) {
+        // @dev - get the hash of the domain with the provided TLD.
+        bytes32 domainHash = getDomainHash(domain, topLevel);
+        // @dev - check whether the msg.sender is the owner of the domain name
+        require(domainNames[domainHash].owner == msg.sender, "You are not the owner of this domain." );
+        _;
+    }
+
+    modifier isDomainNameLengthAllowed(bytes memory domain) {
+        // @dev - check if the provided domain is with allowed length
+        require(domain.length >= DOMAIN_NAME_MIN_LENGTH, "Domain name is too short.");
+        _;
+    }
+
+    modifier isAvailable(bytes memory domain, bytes12 topLevel) {
+        // @dev - get the domain hash by the domain name and the TLD
+        bytes32 domainHash = getDomainHash(domain, topLevel);
+        // @dev - check whether the domain name is available by checking if is expired
+        // if it was not registered at all the `expires` property will be default: 0x00
+        require(domainNames[domainHash].expires < block.timestamp, "Domain name is not available.");
+        _;
+    }
+
+        event LogDomainNameRegistered(uint indexed timestamp, bytes domainName, bytes12 topLevel );
+    event LogDomainNameRenewed(uint indexed timestamp, bytes domainName, bytes12 topLevel, address indexed owner);
+    event LogDomainNameEdited(uint indexed timestamp, bytes domainName, bytes12 topLevel, bytes15 newIp);
+    event LogDomainNameTransferred(uint indexed timestamp, bytes domainName, bytes12 topLevel, address indexed owner, address newOwner);
+    event LogPurchaseChangeReturned(uint indexed timestamp, address indexed _owner, uint amount);
+    event LogReceipt(uint indexed timestamp, bytes domainName, uint amountInWei, uint expires);
